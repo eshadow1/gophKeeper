@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package keeper;
+
+option go_package = "github.com/eshadow1/gophkeeper/internal/pb;pb";
+
+import "google/protobuf/empty.proto";
+
+// GophKeeperService определяет RPC-методы для управления приватными данными.
+service GophKeeperService {
+  // Register регистрирует нового пользователя в системе.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // Login выполняет аутентификацию пользователя и возвращает JWT-токен.
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // CreateItem сохраняет новый зашифрованный элемент данных.
+  rpc CreateItem(stream ItemChunk) returns (Item);
+
+  // UpdateItem обновляет зашифрованный элемент данных.
+  rpc UpdateItem(stream ItemChunk) returns (google.protobuf.Empty);
+
+  // DeleteItem удаляет зашифрованный элемент данных.
+  rpc DeleteItem(Item) returns (google.protobuf.Empty);
+
+  // GetItems возвращает список всех элементов данных пользователя.
+  rpc GetItems(GetItemsRequest) returns (stream Item);
+}
+
+message RegisterRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message RegisterResponse {
+  string token = 1;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+}
+
+message CreateItemRequest {
+  string data_type = 1;
+  bytes encrypted_data = 2;
+  string meta_info = 3;
+}
+
+message ItemChunk {
+  string data_type = 1;
+  string meta_info = 2;
+  bytes encrypted_data = 3;
+  bool is_last = 4;
+  string id = 5;
+}
+
+message CreateItemResponse {
+  string id = 1;
+  string message = 2;
+}
+
+message GetItemsRequest {
+  int64 time_update = 1;
+}
+
+message Item {
+  string id = 1;
+  string data_type = 2;
+  bytes encrypted_data = 3;
+  string meta_info = 4;
+  int64 created_at = 5;
+}
+
+message GetItemsResponse {
+  repeated Item items = 1;
+}
