@@ -70,6 +70,6 @@ GOOS=darwin GOARCH=arm64 go build \
 
 # Windows (amd64)
 GOOS=windows GOARCH=amd64 go build \
-  -ldflags="-X 'main.buildVersionClient=1.0.0' -X 'main.buildDateClient=$(date -u +%Y-%m-%dT%H:%M:%SZ)' -X 'main.buildCommitClient=Client GothKeeper)'" \
+  -ldflags="-X 'main.buildVersionClient=1.0.0' -X 'main.buildDateClient=$(date -u +%Y-%m-%dT%H:%M:%SZ)' -X 'main.buildCommitClient=Client GothKeeper'" \
   -o gophkeeper.exe ./cmd/client
 ```
