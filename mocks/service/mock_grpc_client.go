@@ -162,6 +162,63 @@ func (_c *MockGRPCClient_CreateItem_Call) RunAndReturn(run func(ctx context.Cont
 	return _c
 }
 
+// DeleteItem provides a mock function for the type MockGRPCClient
+func (_mock *MockGRPCClient) DeleteItem(ctx context.Context, id string) error {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteItem")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockGRPCClient_DeleteItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteItem'
+type MockGRPCClient_DeleteItem_Call struct {
+	*mock.Call
+}
+
+// DeleteItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockGRPCClient_Expecter) DeleteItem(ctx interface{}, id interface{}) *MockGRPCClient_DeleteItem_Call {
+	return &MockGRPCClient_DeleteItem_Call{Call: _e.mock.On("DeleteItem", ctx, id)}
+}
+
+func (_c *MockGRPCClient_DeleteItem_Call) Run(run func(ctx context.Context, id string)) *MockGRPCClient_DeleteItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockGRPCClient_DeleteItem_Call) Return(err error) *MockGRPCClient_DeleteItem_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockGRPCClient_DeleteItem_Call) RunAndReturn(run func(ctx context.Context, id string) error) *MockGRPCClient_DeleteItem_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetItems provides a mock function for the type MockGRPCClient
 func (_mock *MockGRPCClient) GetItems(ctx context.Context, timeUpdate int64) ([]*pb.Item, error) {
 	ret := _mock.Called(ctx, timeUpdate)
@@ -411,5 +468,80 @@ func (_c *MockGRPCClient_SetToken_Call) Return() *MockGRPCClient_SetToken_Call {
 
 func (_c *MockGRPCClient_SetToken_Call) RunAndReturn(run func(token string)) *MockGRPCClient_SetToken_Call {
 	_c.Run(run)
+	return _c
+}
+
+// UpdateItem provides a mock function for the type MockGRPCClient
+func (_mock *MockGRPCClient) UpdateItem(ctx context.Context, id string, dataType string, encryptedData []byte, metaInfo string) error {
+	ret := _mock.Called(ctx, id, dataType, encryptedData, metaInfo)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateItem")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, []byte, string) error); ok {
+		r0 = returnFunc(ctx, id, dataType, encryptedData, metaInfo)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockGRPCClient_UpdateItem_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateItem'
+type MockGRPCClient_UpdateItem_Call struct {
+	*mock.Call
+}
+
+// UpdateItem is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - dataType string
+//   - encryptedData []byte
+//   - metaInfo string
+func (_e *MockGRPCClient_Expecter) UpdateItem(ctx interface{}, id interface{}, dataType interface{}, encryptedData interface{}, metaInfo interface{}) *MockGRPCClient_UpdateItem_Call {
+	return &MockGRPCClient_UpdateItem_Call{Call: _e.mock.On("UpdateItem", ctx, id, dataType, encryptedData, metaInfo)}
+}
+
+func (_c *MockGRPCClient_UpdateItem_Call) Run(run func(ctx context.Context, id string, dataType string, encryptedData []byte, metaInfo string)) *MockGRPCClient_UpdateItem_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 []byte
+		if args[3] != nil {
+			arg3 = args[3].([]byte)
+		}
+		var arg4 string
+		if args[4] != nil {
+			arg4 = args[4].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *MockGRPCClient_UpdateItem_Call) Return(err error) *MockGRPCClient_UpdateItem_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockGRPCClient_UpdateItem_Call) RunAndReturn(run func(ctx context.Context, id string, dataType string, encryptedData []byte, metaInfo string) error) *MockGRPCClient_UpdateItem_Call {
+	_c.Call.Return(run)
 	return _c
 }

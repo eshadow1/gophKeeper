@@ -1,4 +1,4 @@
-// Package storage реализует in-memory хранилище для элементов GophKeeper.
+// Package repository реализует in-memory хранилище для элементов GophKeeper.
 // Хранилище обеспечивает потокобезопасный доступ к данным и опциональную
 // персистентность в JSON-файл для сохранения состояния между запусками.
 package repository
@@ -57,7 +57,6 @@ func (r *MemoryRepository) Clear() {
 }
 
 // Delete удаляет элемент из хранилища по его ID.
-// Возвращает ошибку ErrNotFound, если элемент не найден.
 func (s *MemoryRepository) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

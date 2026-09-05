@@ -56,7 +56,7 @@ func main() {
 	keeper := service.NewClient(cfg, cryptoProvider, grpcClient, repo, v)
 
 	m := tui.NewModel(keeper, tui.NewDoModel(keeper))
-	p := tea.NewProgram(&m, tea.WithAltScreen())
+	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	if _, errTea := p.Run(); errTea != nil {
 		fmt.Fprintf(os.Stderr, "Ошибка запуска TUI: %v\n", errTea)

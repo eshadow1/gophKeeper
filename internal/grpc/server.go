@@ -306,10 +306,11 @@ func InitGRPCServer(ctx context.Context, cfg *config.ServerConfig, ks KeepServic
 	if err != nil {
 		return nil, nil, err
 	}
+	worker := service.NewJWTWorker(&cfg.Auth)
 
 	grpcSrv := grpc.NewServer(
-		grpc.UnaryInterceptor(middleware.UnaryAuthInterceptor(&cfg.Auth)),
-		grpc.StreamInterceptor(middleware.StreamAuthInterceptor(&cfg.Auth)),
+		grpc.UnaryInterceptor(middleware.UnaryAuthInterceptor(&cfg.Auth, worker)),
+		grpc.StreamInterceptor(middleware.StreamAuthInterceptor(&cfg.Auth, worker)),
 	)
 
 	pb.RegisterGophKeeperServiceServer(grpcSrv, NewServer(ks, a, cfg))

@@ -7,7 +7,6 @@ import (
 
 	"github.com/eshadow1/gophkeeper/internal/config"
 	"github.com/eshadow1/gophkeeper/internal/model"
-	"github.com/eshadow1/gophkeeper/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -30,9 +29,7 @@ type JWTWorker interface {
 }
 
 // UnaryAuthInterceptor создает unary middleware для проверки JWT-токена в gRPC.
-func UnaryAuthInterceptor(cfg *config.AuthConfig) grpc.UnaryServerInterceptor {
-	worker := service.NewJWTWorker(cfg)
-
+func UnaryAuthInterceptor(cfg *config.AuthConfig, worker JWTWorker) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		if info.FullMethod == "/keeper.GophKeeperService/Register" ||
 			info.FullMethod == "/keeper.GophKeeperService/Login" {
@@ -64,9 +61,7 @@ func UnaryAuthInterceptor(cfg *config.AuthConfig) grpc.UnaryServerInterceptor {
 }
 
 // StreamAuthInterceptor извлекает и проверяет JWT-токен из метаданных потокового запроса.
-func StreamAuthInterceptor(cfg *config.AuthConfig) grpc.StreamServerInterceptor {
-	worker := service.NewJWTWorker(cfg)
-
+func StreamAuthInterceptor(cfg *config.AuthConfig, worker JWTWorker) grpc.StreamServerInterceptor {
 	return func(srv any, stream grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		md, ok := metadata.FromIncomingContext(stream.Context())
 		if !ok {

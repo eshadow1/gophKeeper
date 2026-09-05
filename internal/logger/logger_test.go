@@ -14,12 +14,12 @@ func TestCreateLogger(t *testing.T) {
 		expectError error
 	}{
 		{
-			name:        "success_create_logger",
+			name:        "успешное создание логов",
 			levelLog:    "debug",
 			expectError: nil,
 		},
 		{
-			name:        "success_create_logger",
+			name:        "успешное создание логов",
 			levelLog:    "unknown",
 			expectError: errors.New("unrecognized level: \"unknown\""),
 		},

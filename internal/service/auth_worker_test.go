@@ -48,13 +48,13 @@ func TestJwtWorker_CreateJWT(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "success",
+			name:    "успех",
 			userID:  "user-123",
 			secret:  cfg.JWTSecret,
 			wantErr: false,
 		},
 		{
-			name:    "empty userID",
+			name:    "пустой userID",
 			userID:  "",
 			secret:  cfg.JWTSecret,
 			wantErr: false,

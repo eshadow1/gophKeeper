@@ -81,9 +81,9 @@ func (g *grpcClient) Login(ctx context.Context, username, password string) (stri
 
 // CreateItem отправляет запрос на создание нового зашифрованного элемента.
 func (g *grpcClient) CreateItem(ctx context.Context, dataType string, encryptedData []byte, metaInfo string) (*pb.Item, error) {
-	stream, err := g.client.CreateItem(g.getCtx(ctx))
-	if err != nil {
-		return nil, err
+	stream, errCreate := g.client.CreateItem(g.getCtx(ctx))
+	if errCreate != nil {
+		return nil, errCreate
 	}
 
 	totalSize := len(encryptedData)
@@ -105,8 +105,8 @@ func (g *grpcClient) CreateItem(ctx context.Context, dataType string, encryptedD
 			IsLast:        isLast,
 		}
 
-		if err := stream.Send(req); err != nil {
-			return nil, err
+		if errSend := stream.Send(req); errSend != nil {
+			return nil, errSend
 		}
 
 		offset = end
@@ -117,9 +117,9 @@ func (g *grpcClient) CreateItem(ctx context.Context, dataType string, encryptedD
 
 // UpdateItem обновляет элемент пользователя
 func (g *grpcClient) UpdateItem(ctx context.Context, id, dataType string, encryptedData []byte, metaInfo string) error {
-	stream, err := g.client.UpdateItem(g.getCtx(ctx))
-	if err != nil {
-		return err
+	stream, errUpdate := g.client.UpdateItem(g.getCtx(ctx))
+	if errUpdate != nil {
+		return errUpdate
 	}
 
 	totalSize := len(encryptedData)
@@ -142,8 +142,8 @@ func (g *grpcClient) UpdateItem(ctx context.Context, id, dataType string, encryp
 			Id:            id,
 		}
 
-		if err := stream.Send(req); err != nil {
-			return err
+		if errSend := stream.Send(req); errSend != nil {
+			return errSend
 		}
 
 		offset = end
