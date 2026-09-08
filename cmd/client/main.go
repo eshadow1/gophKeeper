@@ -43,7 +43,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	grpcClient, err := grpc.NewGRPCClient(cfg.GRPCAddr)
+	grpcClient, err := grpc.NewGRPCClient(cfg.GRPCAddr, &cfg.TLS)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Не удалось подключиться к gRPC-серверу: %v\n", err)
 		os.Exit(1)

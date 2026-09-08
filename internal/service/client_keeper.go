@@ -15,11 +15,15 @@ import (
 	"github.com/eshadow1/gophkeeper/internal/crypto"
 	loggers "github.com/eshadow1/gophkeeper/internal/logger"
 	"github.com/eshadow1/gophkeeper/internal/model"
+
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 const (
-	CryptoKey = "KEY_USER"
-	filePern  = 0600
+	CryptoKey             = "KEY_USER"
+	filePern              = 0600
+	defaultMaxSizeBinFile = 500 * 1024 * 1024
+	percentMemUsed        = 0.3
 )
 
 // Cryptographer определяет интерфейс для операций шифрования.
@@ -156,6 +160,7 @@ func (kc *keeperClient) SyncFromServer(ctx context.Context) error {
 			EncryptedData: pbItem.EncryptedData,
 			MetaInfo:      pbItem.MetaInfo,
 			CreatedAt:     time.Unix(0, pbItem.CreatedAt),
+			UpdatedAt:     time.Unix(0, pbItem.UpdatedAt),
 		}
 		kc.repo.Save(item)
 	}
@@ -177,6 +182,12 @@ func (kc *keeperClient) AddItem(ctx context.Context, dataType model.ItemType, pa
 		}
 		binary.Size = info.Size()
 		binary.MimeType = mime.TypeByExtension(filepath.Ext(binary.FilePath))
+
+		maxSizeFile := kc.getMaxAllowedFileSize()
+		if info.Size() > maxSizeFile {
+			return fmt.Errorf("file size (%d bytes) exceeds safe memory limit (%d bytes)", info.Size(), maxSizeFile)
+		}
+
 		var errRead error
 		binary.Data, errRead = os.ReadFile(binary.FilePath)
 		if errRead != nil {
@@ -209,6 +220,7 @@ func (kc *keeperClient) AddItem(ctx context.Context, dataType model.ItemType, pa
 		EncryptedData: pbItem.EncryptedData,
 		MetaInfo:      pbItem.MetaInfo,
 		CreatedAt:     time.Unix(0, pbItem.CreatedAt),
+		UpdatedAt:     time.Unix(0, pbItem.UpdatedAt),
 	}
 	kc.repo.Save(item)
 	return nil
@@ -283,4 +295,13 @@ func (kc *keeperClient) DecryptAndParse(item *model.Item, payload any) error {
 // ListItems возвращает все элементы из локального хранилища в памяти.
 func (kc *keeperClient) ListItems() []*model.Item {
 	return kc.repo.GetAll()
+}
+
+func (kc *keeperClient) getMaxAllowedFileSize() int64 {
+	v, err := mem.VirtualMemory()
+	if err != nil {
+		return defaultMaxSizeBinFile
+	}
+
+	return int64(float64(v.Available) * percentMemUsed)
 }

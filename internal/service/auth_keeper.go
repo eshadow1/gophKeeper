@@ -5,7 +5,6 @@ package service
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/eshadow1/gophkeeper/internal/config"
@@ -95,7 +94,7 @@ func (a *authKeeper) Register(ctx context.Context, userUnsave *model.UserUnsave)
 		return "", errCreate
 	}
 
-	log.Printf("user registered: %s (id: %s)", user.Username, user.ID)
+	loggers.Log.Info("user registered", "username", userUnsave.Username, "id", user.ID)
 	return a.worker.CreateJWT(user.ID, a.cfg.JWTSecret)
 }
 
@@ -117,6 +116,6 @@ func (a *authKeeper) Login(ctx context.Context, userWithPass *model.UserUnsave) 
 		return "", ErrCompareHash
 	}
 
-	log.Printf("user logged in: %s (id: %s)", user.Username, user.ID)
+	loggers.Log.Info("user logged in", "username", user.Username, "id", user.ID)
 	return a.worker.CreateJWT(user.ID, a.cfg.JWTSecret)
 }

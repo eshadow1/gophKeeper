@@ -73,6 +73,8 @@ type Item struct {
 	MetaInfo string
 	// CreatedAt время создания элемента.
 	CreatedAt time.Time
+	// UpdateAt время обновления элемента
+	UpdatedAt time.Time
 }
 
 // Validate проверяет корректность типа элемента.

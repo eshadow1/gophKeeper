@@ -4,12 +4,17 @@ package grpc
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 
 	"github.com/eshadow1/gophkeeper/gen/pb"
+	"github.com/eshadow1/gophkeeper/internal/config"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -30,10 +35,27 @@ type grpcClient struct {
 }
 
 // NewGRPCClient создает и инициализирует новое gRPC-соединение с сервером.
-func NewGRPCClient(addr string) (*grpcClient, error) {
+func NewGRPCClient(addr string, cfg *config.TLSConfig) (*grpcClient, error) {
+	caCert, err := os.ReadFile(cfg.CACertPath)
+	if err != nil {
+		return nil, fmt.Errorf("не удалось прочитать сертификат CA: %w", err)
+	}
+
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		return nil, errors.New("не удалось добавить сертификат в пул доверенных")
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs:    caCertPool,
+		ServerName: cfg.ServerName,
+	}
+
+	creds := credentials.NewTLS(tlsConfig)
+
 	conn, err := grpc.NewClient(
 		addr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(maxRecvMsgSize),
 			grpc.MaxCallSendMsgSize(maxSendMsgSize),
@@ -150,10 +172,8 @@ func (g *grpcClient) UpdateItem(ctx context.Context, id, dataType string, encryp
 	}
 
 	_, errClose := stream.CloseAndRecv()
-	if !errors.Is(errClose, io.EOF) {
-		return errClose
-	}
-	return nil
+
+	return errClose
 }
 
 // DeleteItem удаляет элемент пользователя.

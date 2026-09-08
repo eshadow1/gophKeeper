@@ -9,7 +9,6 @@ package pb
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -453,6 +452,7 @@ type Item struct {
 	EncryptedData []byte                 `protobuf:"bytes,3,opt,name=encrypted_data,json=encryptedData,proto3" json:"encrypted_data,omitempty"`
 	MetaInfo      string                 `protobuf:"bytes,4,opt,name=meta_info,json=metaInfo,proto3" json:"meta_info,omitempty"`
 	CreatedAt     int64                  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     int64                  `protobuf:"varint,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -522,6 +522,13 @@ func (x *Item) GetCreatedAt() int64 {
 	return 0
 }
 
+func (x *Item) GetUpdatedAt() int64 {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return 0
+}
+
 type GetItemsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*Item                `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -566,11 +573,83 @@ func (x *GetItemsResponse) GetItems() []*Item {
 	return nil
 }
 
+type UpdateItemResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateItemResponse) Reset() {
+	*x = UpdateItemResponse{}
+	mi := &file_gothkeeper_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateItemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateItemResponse) ProtoMessage() {}
+
+func (x *UpdateItemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gothkeeper_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateItemResponse.ProtoReflect.Descriptor instead.
+func (*UpdateItemResponse) Descriptor() ([]byte, []int) {
+	return file_gothkeeper_proto_rawDescGZIP(), []int{10}
+}
+
+type DeleteItemResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteItemResponse) Reset() {
+	*x = DeleteItemResponse{}
+	mi := &file_gothkeeper_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteItemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteItemResponse) ProtoMessage() {}
+
+func (x *DeleteItemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_gothkeeper_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteItemResponse.ProtoReflect.Descriptor instead.
+func (*DeleteItemResponse) Descriptor() ([]byte, []int) {
+	return file_gothkeeper_proto_rawDescGZIP(), []int{11}
+}
+
 var File_gothkeeper_proto protoreflect.FileDescriptor
 
 const file_gothkeeper_proto_rawDesc = "" +
 	"\n" +
-	"\x10gothkeeper.proto\x12\x06keeper\x1a\x1bgoogle/protobuf/empty.proto\"I\n" +
+	"\x10gothkeeper.proto\x12\x06keeper\"I\n" +
 	"\x0fRegisterRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"(\n" +
@@ -596,25 +675,29 @@ const file_gothkeeper_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"2\n" +
 	"\x0fGetItemsRequest\x12\x1f\n" +
 	"\vtime_update\x18\x01 \x01(\x03R\n" +
-	"timeUpdate\"\x96\x01\n" +
+	"timeUpdate\"\xb5\x01\n" +
 	"\x04Item\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tdata_type\x18\x02 \x01(\tR\bdataType\x12%\n" +
 	"\x0eencrypted_data\x18\x03 \x01(\fR\rencryptedData\x12\x1b\n" +
 	"\tmeta_info\x18\x04 \x01(\tR\bmetaInfo\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\x03R\tcreatedAt\"6\n" +
+	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\x03R\tupdatedAt\"6\n" +
 	"\x10GetItemsResponse\x12\"\n" +
-	"\x05items\x18\x01 \x03(\v2\f.keeper.ItemR\x05items2\xdd\x02\n" +
+	"\x05items\x18\x01 \x03(\v2\f.keeper.ItemR\x05items\"\x14\n" +
+	"\x12UpdateItemResponse\"\x14\n" +
+	"\x12DeleteItemResponse2\xe5\x02\n" +
 	"\x11GophKeeperService\x12=\n" +
 	"\bRegister\x12\x17.keeper.RegisterRequest\x1a\x18.keeper.RegisterResponse\x124\n" +
 	"\x05Login\x12\x14.keeper.LoginRequest\x1a\x15.keeper.LoginResponse\x12/\n" +
 	"\n" +
-	"CreateItem\x12\x11.keeper.ItemChunk\x1a\f.keeper.Item(\x01\x129\n" +
+	"CreateItem\x12\x11.keeper.ItemChunk\x1a\f.keeper.Item(\x01\x12=\n" +
 	"\n" +
-	"UpdateItem\x12\x11.keeper.ItemChunk\x1a\x16.google.protobuf.Empty(\x01\x122\n" +
+	"UpdateItem\x12\x11.keeper.ItemChunk\x1a\x1a.keeper.UpdateItemResponse(\x01\x126\n" +
 	"\n" +
-	"DeleteItem\x12\f.keeper.Item\x1a\x16.google.protobuf.Empty\x123\n" +
+	"DeleteItem\x12\f.keeper.Item\x1a\x1a.keeper.DeleteItemResponse\x123\n" +
 	"\bGetItems\x12\x17.keeper.GetItemsRequest\x1a\f.keeper.Item0\x01B/Z-github.com/eshadow1/gophkeeper/internal/pb;pbb\x06proto3"
 
 var (
@@ -629,7 +712,7 @@ func file_gothkeeper_proto_rawDescGZIP() []byte {
 	return file_gothkeeper_proto_rawDescData
 }
 
-var file_gothkeeper_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_gothkeeper_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_gothkeeper_proto_goTypes = []any{
 	(*RegisterRequest)(nil),    // 0: keeper.RegisterRequest
 	(*RegisterResponse)(nil),   // 1: keeper.RegisterResponse
@@ -641,7 +724,8 @@ var file_gothkeeper_proto_goTypes = []any{
 	(*GetItemsRequest)(nil),    // 7: keeper.GetItemsRequest
 	(*Item)(nil),               // 8: keeper.Item
 	(*GetItemsResponse)(nil),   // 9: keeper.GetItemsResponse
-	(*emptypb.Empty)(nil),      // 10: google.protobuf.Empty
+	(*UpdateItemResponse)(nil), // 10: keeper.UpdateItemResponse
+	(*DeleteItemResponse)(nil), // 11: keeper.DeleteItemResponse
 }
 var file_gothkeeper_proto_depIdxs = []int32{
 	8,  // 0: keeper.GetItemsResponse.items:type_name -> keeper.Item
@@ -654,8 +738,8 @@ var file_gothkeeper_proto_depIdxs = []int32{
 	1,  // 7: keeper.GophKeeperService.Register:output_type -> keeper.RegisterResponse
 	3,  // 8: keeper.GophKeeperService.Login:output_type -> keeper.LoginResponse
 	8,  // 9: keeper.GophKeeperService.CreateItem:output_type -> keeper.Item
-	10, // 10: keeper.GophKeeperService.UpdateItem:output_type -> google.protobuf.Empty
-	10, // 11: keeper.GophKeeperService.DeleteItem:output_type -> google.protobuf.Empty
+	10, // 10: keeper.GophKeeperService.UpdateItem:output_type -> keeper.UpdateItemResponse
+	11, // 11: keeper.GophKeeperService.DeleteItem:output_type -> keeper.DeleteItemResponse
 	8,  // 12: keeper.GophKeeperService.GetItems:output_type -> keeper.Item
 	7,  // [7:13] is the sub-list for method output_type
 	1,  // [1:7] is the sub-list for method input_type
@@ -675,7 +759,7 @@ func file_gothkeeper_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_gothkeeper_proto_rawDesc), len(file_gothkeeper_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

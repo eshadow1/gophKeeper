@@ -17,4 +17,7 @@ CREATE TABLE IF NOT EXISTS items (
    meta_info TEXT NOT NULL,
    encrypted_data BYTEA NOT NULL,
    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE INDEX idx_items_user_id ON items (user_id);

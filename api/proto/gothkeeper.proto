@@ -4,7 +4,6 @@ package keeper;
 
 option go_package = "github.com/eshadow1/gophkeeper/internal/pb;pb";
 
-import "google/protobuf/empty.proto";
 
 // GophKeeperService определяет RPC-методы для управления приватными данными.
 service GophKeeperService {
@@ -18,10 +17,10 @@ service GophKeeperService {
   rpc CreateItem(stream ItemChunk) returns (Item);
 
   // UpdateItem обновляет зашифрованный элемент данных.
-  rpc UpdateItem(stream ItemChunk) returns (google.protobuf.Empty);
+  rpc UpdateItem(stream ItemChunk) returns (UpdateItemResponse);
 
   // DeleteItem удаляет зашифрованный элемент данных.
-  rpc DeleteItem(Item) returns (google.protobuf.Empty);
+  rpc DeleteItem(Item) returns (DeleteItemResponse);
 
   // GetItems возвращает список всех элементов данных пользователя.
   rpc GetItems(GetItemsRequest) returns (stream Item);
@@ -74,8 +73,15 @@ message Item {
   bytes encrypted_data = 3;
   string meta_info = 4;
   int64 created_at = 5;
+  int64 updated_at = 6;
 }
 
 message GetItemsResponse {
   repeated Item items = 1;
+}
+
+message UpdateItemResponse {
+}
+
+message DeleteItemResponse {
 }

@@ -21,7 +21,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func init() {
@@ -83,7 +82,7 @@ func (m *mockUpdateItemStream) Recv() (*pb.ItemChunk, error) {
 	return chunk, nil
 }
 
-func (m *mockUpdateItemStream) SendAndClose(res *emptypb.Empty) error {
+func (m *mockUpdateItemStream) SendAndClose(res *pb.UpdateItemResponse) error {
 	return nil
 }
 

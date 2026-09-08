@@ -12,6 +12,8 @@ import (
 	"github.com/eshadow1/gophkeeper/internal/config"
 	loggers "github.com/eshadow1/gophkeeper/internal/logger"
 	"github.com/eshadow1/gophkeeper/internal/model"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -21,16 +23,18 @@ import (
 )
 
 const (
-	defaultDriver             = "postgres"
-	defaultMaxIdleConnections = 5
-	defaultMaxOpenConnections = 20
-	defaultMinOpenConnections = 5
-	defaultConnMaxLifetime    = 1 * time.Minute
+	defaultDriver               = "postgres"
+	defaultMaxIdleConnections   = 5
+	defaultMaxOpenConnections   = 20
+	defaultMinOpenConnections   = 5
+	codePostgresDuplicateInsert = "23505"
+	defaultConnMaxLifetime      = 1 * time.Minute
 )
 
 var (
 	ErrUserAlreadyExists = errors.New("user already exists")
 	ErrUserNotFound      = errors.New("user not found")
+	ErrConflict          = errors.New("updated conflict")
 )
 
 type postgreSQLRepository struct {
@@ -98,6 +102,9 @@ func (repo *postgreSQLRepository) CreateUser(ctx context.Context, user *model.Us
 	err := repo.pool.QueryRow(ctx, query, user.Username, user.PasswordHash, user.CreatedAt).
 		Scan(&user.ID, &user.Username, &user.PasswordHash, &user.CreatedAt)
 	if err != nil {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == codePostgresDuplicateInsert {
+			return nil, ErrUserAlreadyExists
+		}
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 	return user, nil
@@ -113,7 +120,7 @@ func (repo *postgreSQLRepository) GetUser(ctx context.Context, username string) 
 	user := &model.User{}
 	err := repo.pool.QueryRow(ctx, query, username).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.CreatedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -124,14 +131,14 @@ func (repo *postgreSQLRepository) GetUser(ctx context.Context, username string) 
 // CreateItem сохраняет новый элемент данных.
 func (repo *postgreSQLRepository) CreateItem(ctx context.Context, item *model.ItemDB) (*model.ItemDB, error) {
 	query := `
-		INSERT INTO items (user_id, data_type, encrypted_data, meta_info, created_at) 
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO items (user_id, data_type, encrypted_data, meta_info, created_at, updated_at) 
+		VALUES ($1, $2, $3, $4, $5, $6)
 		
 		RETURNING id, user_id, data_type, encrypted_data, meta_info, created_at;
 	`
 
-	err := repo.pool.QueryRow(ctx, query, item.UserID, item.DataType, item.EncryptedData, item.MetaInfo, item.CreatedAt).
-		Scan(&item.ID, &item.UserID, &item.DataType, &item.EncryptedData, &item.MetaInfo, &item.CreatedAt)
+	err := repo.pool.QueryRow(ctx, query, item.UserID, item.DataType, item.EncryptedData, item.MetaInfo, item.CreatedAt, item.UpdatedAt).
+		Scan(&item.ID, &item.UserID, &item.DataType, &item.EncryptedData, &item.MetaInfo, &item.CreatedAt, &item.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create item: %w", err)
 	}
@@ -142,12 +149,16 @@ func (repo *postgreSQLRepository) CreateItem(ctx context.Context, item *model.It
 func (repo *postgreSQLRepository) UpdateItem(ctx context.Context, item *model.ItemDB) error {
 	query := `
 		UPDATE items 
-		SET data_type = $3, encrypted_data = $4, meta_info = $5 
-		WHERE id = $1 and user_id = $2;
+		SET data_type = $4, encrypted_data = $5, meta_info = $6, updated_at = NOW() 
+		WHERE id = $1 and user_id = $2 and updated_at = $3;
 	`
-	_, err := repo.pool.Exec(ctx, query, item.ID, item.UserID, item.DataType, item.EncryptedData, item.MetaInfo)
+	tag, err := repo.pool.Exec(ctx, query, item.ID, item.UserID, item.UpdatedAt, item.DataType, item.EncryptedData, item.MetaInfo)
 	if err != nil {
 		return fmt.Errorf("failed to create item: %w", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("update item %s is not success: %w", item.ID, ErrConflict)
 	}
 
 	return nil
@@ -168,7 +179,7 @@ func (repo *postgreSQLRepository) DeleteItem(ctx context.Context, item *model.It
 // GetItemsByUserID возвращает все элементы данных для указанного пользователя.
 func (repo *postgreSQLRepository) GetItemsByUserID(ctx context.Context, userID string) ([]*model.ItemDB, error) {
 	query := `
-		SELECT id, user_id, data_type, encrypted_data, meta_info, created_at 
+		SELECT id, user_id, data_type, encrypted_data, meta_info, created_at, updated_at 
 		FROM items 
 		WHERE user_id = $1
 		`
@@ -182,7 +193,7 @@ func (repo *postgreSQLRepository) GetItemsByUserID(ctx context.Context, userID s
 	var items []*model.ItemDB
 	for rows.Next() {
 		item := &model.ItemDB{}
-		errScan := rows.Scan(&item.ID, &item.UserID, &item.DataType, &item.EncryptedData, &item.MetaInfo, &item.CreatedAt)
+		errScan := rows.Scan(&item.ID, &item.UserID, &item.DataType, &item.EncryptedData, &item.MetaInfo, &item.CreatedAt, &item.UpdatedAt)
 		if errScan != nil {
 			return nil, fmt.Errorf("failed to scan item: %w", errScan)
 		}

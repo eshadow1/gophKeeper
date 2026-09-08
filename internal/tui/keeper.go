@@ -752,8 +752,8 @@ func (m *modelTUI) viewListItems(title, intro, _ string) string {
 			if isSelected {
 				infoStyle = infoStyle.Foreground(lipgloss.Color("#7D56F4"))
 			}
-			fmt.Fprintf(&b, infoStyle.Render("Тип: %s | Мета: %s | Создано: %s\n"),
-				item.DataType, item.MetaInfo, item.CreatedAt.Format("2006-01-02 15:04"))
+			fmt.Fprintf(&b, infoStyle.Render("Тип: %s | Мета: %s | Создано: %s | Обновлено: %s\n"),
+				item.DataType, item.MetaInfo, item.CreatedAt.Format("2006-01-02 15:04"), item.UpdatedAt.Format("2006-01-02 15:04"))
 
 			if isSelected {
 				m.renderDecryptedItem(&b, item)

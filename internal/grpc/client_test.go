@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"errors"
-	"io"
 	"testing"
 
 	"github.com/eshadow1/gophkeeper/gen/pb"
@@ -12,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type MockServiceClient struct {
@@ -51,10 +49,10 @@ func (m *MockServiceClient) UpdateItem(ctx context.Context, opts ...grpc.CallOpt
 	return nil, args.Error(1)
 }
 
-func (m *MockServiceClient) DeleteItem(ctx context.Context, in *pb.Item, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (m *MockServiceClient) DeleteItem(ctx context.Context, in *pb.Item, opts ...grpc.CallOption) (*pb.DeleteItemResponse, error) {
 	args := m.Called(ctx, in, opts)
 	if args.Get(0) != nil {
-		return args.Get(0).(*emptypb.Empty), args.Error(1)
+		return args.Get(0).(*pb.DeleteItemResponse), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -91,10 +89,10 @@ type MockUpdateItemStream struct {
 }
 
 func (m *MockUpdateItemStream) Send(req *pb.ItemChunk) error { return m.Called(req).Error(0) }
-func (m *MockUpdateItemStream) CloseAndRecv() (*emptypb.Empty, error) {
+func (m *MockUpdateItemStream) CloseAndRecv() (*pb.UpdateItemResponse, error) {
 	args := m.Called()
 	if args.Get(0) != nil {
-		return args.Get(0).(*emptypb.Empty), args.Error(1)
+		return args.Get(0).(*pb.UpdateItemResponse), args.Error(1)
 	}
 	return nil, args.Error(1)
 }
@@ -333,7 +331,7 @@ func TestGRPCClient_UpdateItem(t *testing.T) {
 				stream.On("Send", mock.MatchedBy(func(req *pb.ItemChunk) bool {
 					return req.Id == "item-1" && req.IsLast == true
 				})).Return(nil)
-				stream.On("CloseAndRecv").Return(nil, io.EOF)
+				stream.On("CloseAndRecv").Return(nil, nil)
 			},
 			wantErr: false,
 		},
@@ -384,7 +382,7 @@ func TestGRPCClient_DeleteItem(t *testing.T) {
 			id:   "item-1",
 			mockSetup: func(m *MockServiceClient) {
 				m.On("DeleteItem", mock.Anything, &pb.Item{Id: "item-1"}, mock.Anything).
-					Return(&emptypb.Empty{}, nil)
+					Return(&pb.DeleteItemResponse{}, nil)
 			},
 			wantErr: false,
 		},

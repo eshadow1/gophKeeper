@@ -50,4 +50,7 @@ type ItemDB struct {
 
 	// CreatedAt — точная временная метка (UTC) создания элемента данных.
 	CreatedAt time.Time `json:"created_at"`
+
+	// UpdatedAt — точная временная метка (UTC) обноваления элемента данных.
+	UpdatedAt time.Time `json:"updated_at"`
 }

@@ -20,6 +20,12 @@ const (
 	DefaultLevelLog = "info"
 	// DefaultMigrationPath — путь к директории с миграциями базы данных по умолчанию.
 	DefaultMigrationPath = "./migrations"
+	// DefaultPathTLSCert - путь к сертификату
+	DefaultPathTLSCert = "./cert/cert.pem"
+	// DefaultPathTLSKey - путь к ключу
+	DefaultPathTLSKey = "./cert/key.pem"
+	// DefaultServerName - имя сервера
+	DefaultServerName = "localhost"
 )
 
 // LogConfig описывает конфигурацию подсистемы логирования.
@@ -56,6 +62,14 @@ type ConfigJSON struct {
 	StoragePathMigrations string `json:"migrations_path"`
 }
 
+// TLSServerConfig содержит параметры для настройки защищенного соединения.
+type TLSServerConfig struct {
+	// CertFile - путь к файлу сертификата
+	CertFile string
+	// KeyFile - путь к файлу приватного ключа
+	KeyFile string
+}
+
 // ServerConfig является главной структурой конфигурации приложения
 type ServerConfig struct {
 	// GRPCAddr — сетевой адрес для gRPC, который дописывается.
@@ -66,6 +80,8 @@ type ServerConfig struct {
 	Storage StorageConfig
 	// Auth содержит настройки аутентификации.
 	Auth AuthConfig
+	// TLS  содержит настройки защищенного соединения
+	TLS TLSServerConfig
 }
 
 // NewConfig создает и возвращает указатель на новый экземпляр структуры ServerConfig.
@@ -81,17 +97,20 @@ func (c *ServerConfig) Init() {
 		fmt.Fprintf(os.Stderr, "failed to parse file: %s\n", errParse)
 	}
 
-	c.parseWithFlag(cfg)
+	c.GRPCAddr = c.updateEnv("GRPC_ADDRESS", cfg.GRPCAddr)
 
-	c.GRPCAddr = c.updateEnv("GRPC_ADDRESS", c.GRPCAddr)
+	c.Log.Level = c.updateEnv("LOG_LEVEL", cfg.LogLevel)
 
-	c.Log.Level = c.updateEnv("LOG_LEVEL", c.Log.Level)
+	c.Storage.PathDB = c.updateEnv("DATABASE_DSN", cfg.StoragePathDB)
+	c.Storage.PathMigrations = c.updateEnv("MIGRATION_PATH", cfg.StoragePathMigrations)
 
-	c.Storage.PathDB = c.updateEnv("DATABASE_DSN", c.Storage.PathDB)
-	c.Storage.PathMigrations = c.updateEnv("MIGRATION_PATH", c.Storage.PathMigrations)
+	c.Auth.JWTSecret = []byte(c.updateEnv("JWT_SECRET", DefaultEmptyString))
+	c.Auth.TokenIssuer = c.updateEnv("TOKEN_ISSUER", DefaultEmptyString)
 
-	c.Auth.JWTSecret = []byte(c.updateEnv("JWT_SECRET", string(c.Auth.JWTSecret)))
-	c.Auth.TokenIssuer = c.updateEnv("TOKEN_ISSUER", c.Auth.TokenIssuer)
+	c.TLS.CertFile = c.updateEnv("TLS_CERT_FILE", DefaultPathTLSCert)
+	c.TLS.KeyFile = c.updateEnv("TLS_KEY_FILE", DefaultPathTLSKey)
+
+	c.parseWithFlag()
 }
 
 func (*ServerConfig) parseWithJSON(path string) (*ConfigJSON, error) {
@@ -147,11 +166,11 @@ func (*ServerConfig) updateEnv(name, defaultValue string) string {
 	return defaultValue
 }
 
-func (c *ServerConfig) parseWithFlag(cfg *ConfigJSON) {
-	flag.StringVar(&c.GRPCAddr, "g", cfg.GRPCAddr, "host:port")
-	flag.StringVar(&c.Log.Level, "l", cfg.LogLevel, "level log")
-	flag.StringVar(&c.Storage.PathDB, "d", cfg.StoragePathDB, "file storage path")
-	flag.StringVar(&c.Storage.PathMigrations, "m", cfg.StoragePathMigrations, "migrations path")
+func (c *ServerConfig) parseWithFlag() {
+	flag.StringVar(&c.GRPCAddr, "g", c.GRPCAddr, "host:port")
+	flag.StringVar(&c.Log.Level, "l", c.Log.Level, "level log")
+	flag.StringVar(&c.Storage.PathDB, "d", c.Storage.PathDB, "file storage path")
+	flag.StringVar(&c.Storage.PathMigrations, "m", c.Storage.PathMigrations, "migrations path")
 
 	flag.Parse()
 }

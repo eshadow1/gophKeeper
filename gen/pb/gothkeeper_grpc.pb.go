@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -41,9 +40,9 @@ type GophKeeperServiceClient interface {
 	// CreateItem сохраняет новый зашифрованный элемент данных.
 	CreateItem(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ItemChunk, Item], error)
 	// UpdateItem обновляет зашифрованный элемент данных.
-	UpdateItem(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ItemChunk, emptypb.Empty], error)
+	UpdateItem(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ItemChunk, UpdateItemResponse], error)
 	// DeleteItem удаляет зашифрованный элемент данных.
-	DeleteItem(ctx context.Context, in *Item, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteItem(ctx context.Context, in *Item, opts ...grpc.CallOption) (*DeleteItemResponse, error)
 	// GetItems возвращает список всех элементов данных пользователя.
 	GetItems(ctx context.Context, in *GetItemsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Item], error)
 }
@@ -89,22 +88,22 @@ func (c *gophKeeperServiceClient) CreateItem(ctx context.Context, opts ...grpc.C
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type GophKeeperService_CreateItemClient = grpc.ClientStreamingClient[ItemChunk, Item]
 
-func (c *gophKeeperServiceClient) UpdateItem(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ItemChunk, emptypb.Empty], error) {
+func (c *gophKeeperServiceClient) UpdateItem(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ItemChunk, UpdateItemResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &GophKeeperService_ServiceDesc.Streams[1], GophKeeperService_UpdateItem_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[ItemChunk, emptypb.Empty]{ClientStream: stream}
+	x := &grpc.GenericClientStream[ItemChunk, UpdateItemResponse]{ClientStream: stream}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GophKeeperService_UpdateItemClient = grpc.ClientStreamingClient[ItemChunk, emptypb.Empty]
+type GophKeeperService_UpdateItemClient = grpc.ClientStreamingClient[ItemChunk, UpdateItemResponse]
 
-func (c *gophKeeperServiceClient) DeleteItem(ctx context.Context, in *Item, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *gophKeeperServiceClient) DeleteItem(ctx context.Context, in *Item, opts ...grpc.CallOption) (*DeleteItemResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(DeleteItemResponse)
 	err := c.cc.Invoke(ctx, GophKeeperService_DeleteItem_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -144,9 +143,9 @@ type GophKeeperServiceServer interface {
 	// CreateItem сохраняет новый зашифрованный элемент данных.
 	CreateItem(grpc.ClientStreamingServer[ItemChunk, Item]) error
 	// UpdateItem обновляет зашифрованный элемент данных.
-	UpdateItem(grpc.ClientStreamingServer[ItemChunk, emptypb.Empty]) error
+	UpdateItem(grpc.ClientStreamingServer[ItemChunk, UpdateItemResponse]) error
 	// DeleteItem удаляет зашифрованный элемент данных.
-	DeleteItem(context.Context, *Item) (*emptypb.Empty, error)
+	DeleteItem(context.Context, *Item) (*DeleteItemResponse, error)
 	// GetItems возвращает список всех элементов данных пользователя.
 	GetItems(*GetItemsRequest, grpc.ServerStreamingServer[Item]) error
 	mustEmbedUnimplementedGophKeeperServiceServer()
@@ -168,10 +167,10 @@ func (UnimplementedGophKeeperServiceServer) Login(context.Context, *LoginRequest
 func (UnimplementedGophKeeperServiceServer) CreateItem(grpc.ClientStreamingServer[ItemChunk, Item]) error {
 	return status.Error(codes.Unimplemented, "method CreateItem not implemented")
 }
-func (UnimplementedGophKeeperServiceServer) UpdateItem(grpc.ClientStreamingServer[ItemChunk, emptypb.Empty]) error {
+func (UnimplementedGophKeeperServiceServer) UpdateItem(grpc.ClientStreamingServer[ItemChunk, UpdateItemResponse]) error {
 	return status.Error(codes.Unimplemented, "method UpdateItem not implemented")
 }
-func (UnimplementedGophKeeperServiceServer) DeleteItem(context.Context, *Item) (*emptypb.Empty, error) {
+func (UnimplementedGophKeeperServiceServer) DeleteItem(context.Context, *Item) (*DeleteItemResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteItem not implemented")
 }
 func (UnimplementedGophKeeperServiceServer) GetItems(*GetItemsRequest, grpc.ServerStreamingServer[Item]) error {
@@ -242,11 +241,11 @@ func _GophKeeperService_CreateItem_Handler(srv interface{}, stream grpc.ServerSt
 type GophKeeperService_CreateItemServer = grpc.ClientStreamingServer[ItemChunk, Item]
 
 func _GophKeeperService_UpdateItem_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(GophKeeperServiceServer).UpdateItem(&grpc.GenericServerStream[ItemChunk, emptypb.Empty]{ServerStream: stream})
+	return srv.(GophKeeperServiceServer).UpdateItem(&grpc.GenericServerStream[ItemChunk, UpdateItemResponse]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GophKeeperService_UpdateItemServer = grpc.ClientStreamingServer[ItemChunk, emptypb.Empty]
+type GophKeeperService_UpdateItemServer = grpc.ClientStreamingServer[ItemChunk, UpdateItemResponse]
 
 func _GophKeeperService_DeleteItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Item)

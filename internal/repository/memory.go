@@ -23,7 +23,7 @@ type MemoryRepository struct {
 }
 
 // NewMemoryRepository создает и возвращает новое in-memory хранилище,
-// инициализируя его данными, загруженными из файла по указанному пути.
+// загрузка данных в которое осуществляется при входе или регистрации.
 func NewMemoryRepository() *MemoryRepository {
 	return &MemoryRepository{
 		items: make(map[string]*model.Item),

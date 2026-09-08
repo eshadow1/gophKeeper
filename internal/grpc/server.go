@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -15,8 +16,8 @@ import (
 	"github.com/eshadow1/gophkeeper/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
@@ -66,10 +67,12 @@ func (s *Server) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Reg
 
 	token, errRegister := s.auth.Register(ctx, &model.UserUnsave{Username: req.Username, Password: req.Password})
 	if errRegister != nil {
-		loggers.Log.Error("failed to find user: ", errRegister)
 		if errors.Is(errRegister, service.ErrUserAlreadyExists) {
+			loggers.Log.Info("User already exists", "username", req.Username)
 			return nil, status.Errorf(codes.AlreadyExists, "user already exists")
 		}
+
+		loggers.Log.Error("failed to find user: ", errRegister)
 		return nil, status.Errorf(codes.Internal, "failed to create user")
 	}
 
@@ -84,10 +87,12 @@ func (s *Server) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResp
 
 	token, errGet := s.auth.Login(ctx, &model.UserUnsave{Username: req.Username, Password: req.Password})
 	if errGet != nil {
-		loggers.Log.Error("failed to find user: ", errGet)
 		if errors.Is(errGet, service.ErrUserNotFound) || errors.Is(errGet, service.ErrCompareHash) {
+			loggers.Log.Info("User not found or password invalid", "username", req.Username)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid username or password")
 		}
+
+		loggers.Log.Error("failed to find user: ", errGet)
 		return nil, status.Errorf(codes.Internal, "failed to authenticate")
 	}
 
@@ -225,7 +230,7 @@ func (s *Server) UpdateItem(stream pb.GophKeeperService_UpdateItemServer) error 
 }
 
 // DeleteItem помечает элемент как удаленный (soft delete).
-func (s *Server) DeleteItem(ctx context.Context, req *pb.Item) (*emptypb.Empty, error) {
+func (s *Server) DeleteItem(ctx context.Context, req *pb.Item) (*pb.DeleteItemResponse, error) {
 	userID, errGet := s.getUserIDFromContext(ctx)
 	if errGet != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "user not found in context")
@@ -285,6 +290,7 @@ func (*Server) itemToProto(item *model.ItemDB) *pb.Item {
 		EncryptedData: item.EncryptedData,
 		MetaInfo:      item.MetaInfo,
 		CreatedAt:     item.CreatedAt.UnixNano(),
+		UpdatedAt:     item.UpdatedAt.UnixNano(),
 	}
 }
 
@@ -295,11 +301,17 @@ func (*Server) protoToItem(req *pb.Item) *model.ItemDB {
 		EncryptedData: req.EncryptedData,
 		MetaInfo:      req.MetaInfo,
 		CreatedAt:     time.Unix(0, req.CreatedAt),
+		UpdatedAt:     time.Unix(0, req.UpdatedAt),
 	}
 }
 
 // InitGRPCServer создает и настраивает gRPC сервер.
 func InitGRPCServer(ctx context.Context, cfg *config.ServerConfig, ks KeepService, a Authenticator) (*grpc.Server, net.Listener, error) {
+	creds, err := credentials.NewServerTLSFromFile(cfg.TLS.CertFile, cfg.TLS.KeyFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("не удалось загрузить TLS сертификаты: %w", err)
+	}
+
 	lc := &net.ListenConfig{}
 
 	lis, err := lc.Listen(ctx, "tcp", cfg.GRPCAddr)
@@ -309,6 +321,7 @@ func InitGRPCServer(ctx context.Context, cfg *config.ServerConfig, ks KeepServic
 	worker := service.NewJWTWorker(&cfg.Auth)
 
 	grpcSrv := grpc.NewServer(
+		grpc.Creds(creds),
 		grpc.UnaryInterceptor(middleware.UnaryAuthInterceptor(&cfg.Auth, worker)),
 		grpc.StreamInterceptor(middleware.StreamAuthInterceptor(&cfg.Auth, worker)),
 	)
