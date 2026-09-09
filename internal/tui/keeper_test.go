@@ -7,11 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/eshadow1/gophkeeper/internal/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	mocktui "github.com/eshadow1/gophkeeper/mocks/tui"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewModelAndInit(t *testing.T) {
@@ -84,7 +83,7 @@ func TestModelTUI_Update_Messages(t *testing.T) {
 			},
 		},
 		{
-			name:         "syncDoneMsg успешно (ТРЕБУЕТСЯ МОК ListItems)",
+			name:         "syncDoneMsg успешно",
 			initialSetup: func(m *modelTUI) { m.loading = true },
 			msg:          syncDoneMsg{err: nil},
 			mockSetup: func(k *mocktui.MockKeeperClient) {
@@ -97,7 +96,7 @@ func TestModelTUI_Update_Messages(t *testing.T) {
 			},
 		},
 		{
-			name: "addItemDoneMsg успешно (ТРЕБУЕТСЯ МОК ListItems)",
+			name: "addItemDoneMsg успешно при редактировании",
 			initialSetup: func(m *modelTUI) {
 				m.loading = true
 				m.isEditing = true
@@ -197,6 +196,21 @@ func TestModelTUI_Update_MenuAndForms(t *testing.T) {
 			},
 		},
 		{
+			name: "Форма: переключение по Shift+Tab (назад)",
+			initialSetup: func(m *modelTUI) {
+				m.screen = ScreenLoginForm
+				m.currentForm = []string{"username", "password"}
+				m.activeFieldIdx = 1
+				m.inputs["password"].Focus()
+			},
+			msg: tea.KeyMsg{Type: tea.KeyShiftTab},
+			assertState: func(t *testing.T, m *modelTUI) {
+				assert.Equal(t, 0, m.activeFieldIdx)
+				assert.True(t, m.inputs["username"].Focused())
+				assert.False(t, m.inputs["password"].Focused())
+			},
+		},
+		{
 			name: "Форма: отправка с ошибкой валидации",
 			initialSetup: func(m *modelTUI) {
 				m.screen = ScreenLoginForm
@@ -208,7 +222,6 @@ func TestModelTUI_Update_MenuAndForms(t *testing.T) {
 			},
 			msg: tea.KeyMsg{Type: tea.KeyEnter},
 			assertState: func(t *testing.T, m *modelTUI) {
-				// Новое сообщение об ошибке из baseValidate
 				assert.Contains(t, m.errMsg, "поле обязательно для заполнения")
 			},
 		},
@@ -321,7 +334,7 @@ func TestModelTUI_Update_ListItemsAndEdit(t *testing.T) {
 			},
 		},
 		{
-			name: "Список: нажатие 'e' начинает редактирование",
+			name: "Список: нажатие 'e' начинает редактирование Text",
 			initialSetup: func(m *modelTUI) {
 				m.screen = ScreenListItems
 				m.items = []*model.Item{testItem}
@@ -329,7 +342,7 @@ func TestModelTUI_Update_ListItemsAndEdit(t *testing.T) {
 			},
 			msg: tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("e")},
 			mockSetup: func(k *mocktui.MockKeeperClient, d *mocktui.MockDoingModel) {
-				k.EXPECT().DecryptAndParse(testItem, mock.Anything).Run(
+				k.EXPECT().DecryptAndParse(mock.Anything, mock.Anything).Run(
 					func(item *model.Item, p any) {
 						if textPayload, ok := p.(*model.TextPayload); ok {
 							textPayload.Content = "decrypted content"
@@ -352,6 +365,62 @@ func TestModelTUI_Update_ListItemsAndEdit(t *testing.T) {
 			},
 			assertState: func(t *testing.T, m *modelTUI) {
 				assert.True(t, m.loading)
+			},
+		},
+		{
+			name:         "Список: поиск активируется по '/'",
+			initialSetup: func(m *modelTUI) { m.screen = ScreenListItems },
+			msg:          tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")},
+			assertState: func(t *testing.T, m *modelTUI) {
+				assert.True(t, m.isSearching)
+				assert.True(t, m.searchInput.Focused())
+			},
+		},
+		{
+			name: "Список: отмена поиска по esc",
+			initialSetup: func(m *modelTUI) {
+				m.screen = ScreenListItems
+				m.isSearching = true
+				m.searchInput.Focus()
+				m.searchInput.SetValue("query")
+			},
+			msg: tea.KeyMsg{Type: tea.KeyEsc},
+			assertState: func(t *testing.T, m *modelTUI) {
+				assert.False(t, m.isSearching)
+				assert.Empty(t, m.searchInput.Value())
+			},
+		},
+		{
+			name: "Список: фильтрация элементов при поиске",
+			initialSetup: func(m *modelTUI) {
+				m.screen = ScreenListItems
+				m.items = []*model.Item{
+					{ID: "1", MetaInfo: "work password"},
+					{ID: "2", MetaInfo: "personal note"},
+				}
+				m.isSearching = true
+				m.searchInput.SetValue("work")
+			},
+			msg: tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")}, // Любое нажатие для триггера update
+			assertState: func(t *testing.T, m *modelTUI) {
+				filtered := m.getFilteredItems()
+				assert.Len(t, filtered, 1)
+				assert.Equal(t, "1", filtered[0].ID)
+			},
+		},
+		{
+			name: "Главное меню: ошибка LoadToken при переходе к списку",
+			initialSetup: func(m *modelTUI) {
+				m.screen = ScreenMainMenu
+				m.menuCursor = tabListItems
+			},
+			msg: tea.KeyMsg{Type: tea.KeyEnter},
+			mockSetup: func(k *mocktui.MockKeeperClient, d *mocktui.MockDoingModel) {
+				k.EXPECT().LoadToken().Return(errors.New("token error"))
+			},
+			assertState: func(t *testing.T, m *modelTUI) {
+				assert.Contains(t, m.errMsg, "token error")
+				assert.Equal(t, ScreenMainMenu, m.screen) // Экран не должен измениться
 			},
 		},
 	}
@@ -428,28 +497,77 @@ func TestModelTUI_View(t *testing.T) {
 			},
 			assertOutput: func(t *testing.T, output string) {
 				assert.Contains(t, output, "Мои данные")
-				assert.Contains(t, output, "Список пуст. Нажмите 's' для синхронизации")
+				assert.Contains(t, output, "Список пуст.")
 			},
 		},
 		{
 			name: "View: список с элементами и подтверждением удаления",
 			setupModel: func(m *modelTUI) {
 				m.screen = ScreenListItems
-				m.items = []*model.Item{{ID: "123", DataType: model.TextItem, MetaInfo: "meta", CreatedAt: time.Now()}}
+				m.items = []*model.Item{{ID: "123", DataType: model.TextItem, MetaInfo: "meta", CreatedAt: time.Now(), UpdatedAt: time.Now()}}
 				m.listCursor = 0
 				m.awaitingDeleteConfirm = true
 			},
 			mockSetup: func(k *mocktui.MockKeeperClient) {
-				k.EXPECT().
-					DecryptAndParse(mock.Anything, mock.Anything).
-					Return(nil).
-					Maybe()
+				k.EXPECT().DecryptAndParse(mock.Anything, mock.Anything).Return(nil).Maybe()
 			},
 			assertOutput: func(t *testing.T, output string) {
 				assert.Contains(t, output, "ID: 123")
 				assert.Contains(t, output, "Тип: text")
 				assert.Contains(t, output, "Вы уверены, что хотите удалить запись 123?")
 				assert.Contains(t, output, "y подтвердить удаление")
+			},
+		},
+		{
+			name: "View: поиск не нашел элементов",
+			setupModel: func(m *modelTUI) {
+				m.screen = ScreenListItems
+				m.items = []*model.Item{{ID: "1", MetaInfo: "work"}}
+				m.isSearching = true
+				m.searchInput.SetValue("personal")
+			},
+			assertOutput: func(t *testing.T, output string) {
+				assert.Contains(t, output, "Ничего не найдено по вашему запросу.")
+			},
+		},
+		{
+			name: "View: ошибка расшифровки при рендере",
+			setupModel: func(m *modelTUI) {
+				m.screen = ScreenListItems
+				m.items = []*model.Item{{ID: "1", DataType: model.LoginItem, MetaInfo: "meta", CreatedAt: time.Now(), UpdatedAt: time.Now()}}
+				m.listCursor = 0
+			},
+			mockSetup: func(k *mocktui.MockKeeperClient) {
+				k.EXPECT().DecryptAndParse(mock.Anything, mock.Anything).Return(errors.New("decrypt fail"))
+			},
+			assertOutput: func(t *testing.T, output string) {
+				assert.Contains(t, output, "Ошибка расшифровки: decrypt fail")
+			},
+		},
+		{
+			name: "View: рендер расшифрованной карты и бинарного файла",
+			setupModel: func(m *modelTUI) {
+				m.screen = ScreenListItems
+				m.items = []*model.Item{
+					{ID: "1", DataType: model.CardItem, MetaInfo: "card", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+					{ID: "2", DataType: model.BinaryItem, MetaInfo: "file", CreatedAt: time.Now(), UpdatedAt: time.Now()},
+				}
+				m.listCursor = 0
+			},
+			mockSetup: func(k *mocktui.MockKeeperClient) {
+				k.EXPECT().DecryptAndParse(mock.Anything, mock.Anything).Run(func(item *model.Item, p any) {
+					if cp, ok := p.(*model.CardPayload); ok {
+						cp.Number = "1234"
+						cp.Holder = "John"
+						cp.ExpiryMonth = "12"
+						cp.ExpiryYear = "25"
+						cp.CVV = "123"
+					}
+				}).Return(nil).Once()
+			},
+			assertOutput: func(t *testing.T, output string) {
+				assert.Contains(t, output, "Карта: 1234")
+				assert.Contains(t, output, "Владелец: John")
 			},
 		},
 	}
@@ -472,7 +590,8 @@ func TestModelTUI_View(t *testing.T) {
 }
 
 func TestModelTUI_Helpers(t *testing.T) {
-	m := NewModel(mocktui.NewMockKeeperClient(t), mocktui.NewMockDoingModel(t))
+	mockKeeper := mocktui.NewMockKeeperClient(t)
+	m := NewModel(mockKeeper, mocktui.NewMockDoingModel(t))
 
 	m.inputs["login"].SetValue("user")
 	m.inputs["password"].SetValue("pass")
@@ -492,4 +611,103 @@ func TestModelTUI_Helpers(t *testing.T) {
 	assert.Empty(t, m.editingItemID)
 	assert.Equal(t, ScreenListItems, m.screen)
 	assert.Equal(t, "Редактирование отменено", m.statusMsg)
+}
+
+func TestModelTUI_EditFlows(t *testing.T) {
+	tests := []struct {
+		name        string
+		item        *model.Item
+		mockSetup   func(k *mocktui.MockKeeperClient, item *model.Item)
+		assertState func(t *testing.T, m *modelTUI)
+	}{
+		{
+			name: "startEdit для Login",
+			item: &model.Item{ID: "l1", DataType: model.LoginItem, MetaInfo: "meta"},
+			mockSetup: func(k *mocktui.MockKeeperClient, item *model.Item) {
+				k.EXPECT().DecryptAndParse(item, mock.Anything).Run(func(i *model.Item, p any) {
+					if payload, ok := p.(*model.LoginPayload); ok {
+						payload.Username = "admin"
+						payload.Password = "123"
+					}
+				}).Return(nil)
+			},
+			assertState: func(t *testing.T, m *modelTUI) {
+				assert.True(t, m.isEditing)
+				assert.Equal(t, ScreenAddLogin, m.screen)
+				assert.Equal(t, "admin", m.inputs["login"].Value())
+				assert.Equal(t, "123", m.inputs["password"].Value())
+				assert.Equal(t, "meta", m.inputs["meta"].Value())
+			},
+		},
+		{
+			name: "startEdit для Card",
+			item: &model.Item{ID: "c1", DataType: model.CardItem, MetaInfo: "bank"},
+			mockSetup: func(k *mocktui.MockKeeperClient, item *model.Item) {
+				k.EXPECT().DecryptAndParse(item, mock.Anything).Run(func(i *model.Item, p any) {
+					if payload, ok := p.(*model.CardPayload); ok {
+						payload.Number = "0000"
+						payload.Holder = "Ivan"
+						payload.ExpiryMonth = "10"
+						payload.ExpiryYear = "24"
+						payload.CVV = "999"
+					}
+				}).Return(nil)
+			},
+			assertState: func(t *testing.T, m *modelTUI) {
+				assert.True(t, m.isEditing)
+				assert.Equal(t, ScreenAddCard, m.screen)
+				assert.Equal(t, "0000", m.inputs["cardNumber"].Value())
+				assert.Equal(t, "Ivan", m.inputs["cardHolder"].Value())
+				assert.Equal(t, "10/24", m.inputs["cardExpiry"].Value())
+				assert.Equal(t, "999", m.inputs["cardCVV"].Value())
+				assert.Equal(t, "bank", m.inputs["meta"].Value())
+			},
+		},
+		{
+			name: "startEdit для Binary",
+			item: &model.Item{ID: "b1", DataType: model.BinaryItem, MetaInfo: "doc"},
+			mockSetup: func(k *mocktui.MockKeeperClient, item *model.Item) {
+				k.EXPECT().DecryptAndParse(item, mock.Anything).Run(func(i *model.Item, p any) {
+					if payload, ok := p.(*model.BinaryPayload); ok {
+						payload.FilePath = "/tmp/file.bin"
+					}
+				}).Return(nil)
+			},
+			assertState: func(t *testing.T, m *modelTUI) {
+				assert.True(t, m.isEditing)
+				assert.Equal(t, ScreenAddBinary, m.screen)
+				assert.Equal(t, "/tmp/file.bin", m.inputs["filePath"].Value())
+				assert.Equal(t, "doc", m.inputs["meta"].Value())
+			},
+		},
+		{
+			name: "startEdit с ошибкой расшифровки",
+			item: &model.Item{ID: "e1", DataType: model.TextItem, MetaInfo: "err_meta"},
+			mockSetup: func(k *mocktui.MockKeeperClient, item *model.Item) {
+				k.EXPECT().DecryptAndParse(item, mock.Anything).Return(errors.New("fail decrypt"))
+			},
+			assertState: func(t *testing.T, m *modelTUI) {
+				assert.True(t, m.isEditing)
+				assert.Equal(t, ScreenAddText, m.screen)
+				assert.Empty(t, m.inputs["content"].Value())
+				assert.Equal(t, "err_meta", m.inputs["meta"].Value())
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockKeeper := mocktui.NewMockKeeperClient(t)
+			mockDoing := mocktui.NewMockDoingModel(t)
+			m := NewModel(mockKeeper, mockDoing)
+
+			if tt.mockSetup != nil {
+				tt.mockSetup(mockKeeper, tt.item)
+			}
+
+			m.startEdit(tt.item)
+
+			tt.assertState(t, m)
+		})
+	}
 }

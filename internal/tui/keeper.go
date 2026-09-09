@@ -16,6 +16,7 @@ const (
 	esc  = "esc"
 	down = "down"
 	up   = "up"
+	del  = "delete"
 )
 
 // KeeperClient описывает интерфейс для работы с бизнес-логикой клиента GophKeeper.
@@ -127,6 +128,10 @@ type modelTUI struct {
 	isEditing             bool
 	editingItemID         string
 	awaitingDeleteConfirm bool
+
+	searchInput    textinput.Model
+	isSearching    bool
+	isActiveSearch bool
 }
 
 var (
@@ -195,6 +200,11 @@ func NewModel(keeper KeeperClient, doing DoingModel) *modelTUI {
 	m.inputs["meta"] = newInput("Метаинформация (необязательно)", 256, 60, false)
 	m.inputs["filePath"] = newInput("Путь к файлу", 512, 60, false)
 
+	m.searchInput = textinput.New()
+	m.searchInput.Placeholder = "Поиск по метаинформации..."
+	m.searchInput.CharLimit = 128
+	m.searchInput.Width = 50
+
 	return m
 }
 
@@ -206,6 +216,7 @@ func (m *modelTUI) blurAll() {
 	for k := range m.inputs {
 		m.inputs[k].Blur()
 	}
+	m.searchInput.Blur()
 }
 
 func (m *modelTUI) focusField(id string) {
@@ -481,9 +492,18 @@ func (m *modelTUI) handleEscape() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if m.isSearching {
+		m.isSearching = false
+		m.isActiveSearch = false
+		m.searchInput.SetValue("")
+		m.searchInput.Blur()
+		m.adjustListCursor()
+		return m, nil
+	}
+
 	m.errMsg, m.statusMsg, m.awaitingDeleteConfirm = "", "", false
 
-	if m.screen >= ScreenListItems { // Все экраны, кроме Auth и MainMenu
+	if m.screen >= ScreenListItems {
 		m.screen, m.menuItems, m.menuCursor = ScreenMainMenu, mainMenu(), 0
 	} else {
 		m.screen, m.menuItems, m.menuCursor = ScreenAuth, defaultMenu(), 0
@@ -545,53 +565,108 @@ func (m *modelTUI) updateMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *modelTUI) getFilteredItems() []*models.Item {
+	if !m.isSearching || m.searchInput.Value() == "" {
+		return m.items
+	}
+	query := strings.ToLower(m.searchInput.Value())
+	var filtered []*models.Item
+	for _, item := range m.items {
+		if strings.Contains(strings.ToLower(item.MetaInfo), query) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
 func (m *modelTUI) adjustListCursor() {
-	if len(m.items) == 0 {
+	filtered := m.getFilteredItems()
+	if len(filtered) == 0 {
 		m.listCursor = 0
-	} else if m.listCursor >= len(m.items) {
-		m.listCursor = len(m.items) - 1
+	} else if m.listCursor >= len(filtered) {
+		m.listCursor = len(filtered) - 1
 	}
 }
 
 func (m *modelTUI) updateListItems(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if key, ok := msg.(tea.KeyMsg); ok {
-		if m.awaitingDeleteConfirm {
+		if m.isSearching && m.isActiveSearch {
 			switch key.String() {
-			case "y", "Y":
-				m.awaitingDeleteConfirm = false
-				if len(m.items) > 0 {
-					m.loading = true
-					return m, m.doing.DeleteItem(m.items[m.listCursor].ID)
+			case "enter":
+				m.isActiveSearch = false
+				m.searchInput.Blur()
+				m.adjustListCursor()
+				return m, nil
+			case up:
+				filtered := m.getFilteredItems()
+				if m.listCursor > 0 {
+					m.listCursor--
+				} else if len(filtered) > 0 {
+					m.listCursor = len(filtered) - 1
 				}
-			case "n", "N", esc:
-				m.awaitingDeleteConfirm = false
+				return m, nil
+			case down:
+				filtered := m.getFilteredItems()
+				if m.listCursor < len(filtered)-1 {
+					m.listCursor++
+				} else if len(filtered) > 0 {
+					m.listCursor = 0
+				}
 				return m, nil
 			}
-			return m, nil
+
+			updatedInput, cmd := m.searchInput.Update(msg)
+			m.searchInput = updatedInput
+			m.adjustListCursor()
+			return m, cmd
 		}
 
 		switch key.String() {
+		case "/":
+			m.isSearching = true
+			m.isActiveSearch = true
+			m.searchInput.Focus()
+			return m, textinput.Blink
 		case up, "k":
+			filtered := m.getFilteredItems()
 			if m.listCursor > 0 {
 				m.listCursor--
+			} else if len(filtered) > 0 {
+				m.listCursor = len(filtered) - 1
 			}
 		case down, "j":
-			if m.listCursor < len(m.items)-1 {
+			filtered := m.getFilteredItems()
+			if m.listCursor < len(filtered)-1 {
 				m.listCursor++
+			} else if len(filtered) > 0 {
+				m.listCursor = 0
 			}
-		case "d":
-			if len(m.items) > 0 {
+		case del, "d":
+			filtered := m.getFilteredItems()
+			if len(filtered) > 0 {
 				m.awaitingDeleteConfirm = true
 			}
 		case "e":
-			if len(m.items) > 0 {
-				return m.startEdit(m.items[m.listCursor])
+			filtered := m.getFilteredItems()
+			if len(filtered) > 0 {
+				return m.startEdit(filtered[m.listCursor])
 			}
 		case "s":
 			m.loading = true
 			return m, m.doing.Sync()
-		case esc:
-			return m.handleEscape()
+		case "y":
+			if m.awaitingDeleteConfirm {
+				filtered := m.getFilteredItems()
+				if len(filtered) > 0 {
+					m.loading = true
+					m.awaitingDeleteConfirm = false
+					return m, m.doing.DeleteItem(filtered[m.listCursor].ID)
+				}
+			}
+		case "n":
+			if m.awaitingDeleteConfirm {
+				m.awaitingDeleteConfirm = false
+			}
 		}
 	}
 	return m, nil
@@ -732,10 +807,22 @@ func (m *modelTUI) viewListItems(title, intro, _ string) string {
 		b.WriteString(intro + "\n\n")
 	}
 
-	if len(m.items) == 0 {
-		b.WriteString("Список пуст. Нажмите 's' для синхронизации с сервером.\n")
+	if m.isSearching {
+		b.WriteString("Поиск: " + activeInputStyle.Render(m.searchInput.View()) + "\n\n")
 	} else {
-		for i, item := range m.items {
+		b.WriteString("Нажмите '/' для поиска по метаинформации\n\n")
+	}
+
+	filtered := m.getFilteredItems()
+
+	if len(filtered) == 0 {
+		if len(m.items) == 0 {
+			b.WriteString("Список пуст.\n")
+		} else {
+			b.WriteString("Ничего не найдено по вашему запросу.\n")
+		}
+	} else {
+		for i, item := range filtered {
 			isSelected := i == m.listCursor
 			prefix := "  "
 			if isSelected {
@@ -762,14 +849,16 @@ func (m *modelTUI) viewListItems(title, intro, _ string) string {
 		}
 	}
 
-	if m.awaitingDeleteConfirm && len(m.items) > 0 {
-		b.WriteString("\n" + errorStyle.Render(fmt.Sprintf("Вы уверены, что хотите удалить запись %s? (y/n)", m.items[m.listCursor].ID)) + "\n")
+	if m.awaitingDeleteConfirm && len(filtered) > 0 {
+		b.WriteString("\n" + errorStyle.Render(fmt.Sprintf("Вы уверены, что хотите удалить запись %s? (y/n)", filtered[m.listCursor].ID)) + "\n")
 	}
 
 	m.writeStatusMessages(&b)
 
-	helpText := "↑/↓ выбор • e редактировать • d удалить • s синхронизировать • esc назад"
-	if m.awaitingDeleteConfirm {
+	helpText := "↑/↓ выбор • e редактировать • d удалить • s синхронизировать • / поиск • esc назад"
+	if m.isSearching {
+		helpText = "введите запрос • enter применить • esc отменить поиск"
+	} else if m.awaitingDeleteConfirm {
 		helpText = "y подтвердить удаление • n отмена"
 	}
 	b.WriteString(helpStyle.Render(helpText))
@@ -798,14 +887,14 @@ func (m *modelTUI) renderDecryptedItem(b *strings.Builder, item *models.Item) {
 
 	switch p := payload.(type) {
 	case *models.LoginPayload:
-		fmt.Fprintf(b, "  Логин: %s\n  Пароль: %s\n", p.Username, p.Password)
+		fmt.Fprintf(b, "\n\t\tЛогин: %s\n\t\tПароль: %s\n\n", p.Username, p.Password)
 	case *models.TextPayload:
-		fmt.Fprintf(b, "  Содержание: %s\n", p.Content)
+		fmt.Fprintf(b, "\n\t\tСодержание: %s\n\n", p.Content)
 	case *models.CardPayload:
-		fmt.Fprintf(b, "  Карта: %s\n  Владелец: %s\n  Срок: %s/%s, CVV: %s\n",
+		fmt.Fprintf(b, "\n\t\tКарта: %s\n\t\tВладелец: %s\n\t\tСрок: %s/%s, CVV: %s\n\n",
 			p.Number, p.Holder, p.ExpiryMonth, p.ExpiryYear, p.CVV)
 	case *models.BinaryPayload:
-		fmt.Fprintf(b, "  Файл: %s\n  Размер: %d байт\n  MIME: %s\n",
+		fmt.Fprintf(b, "\n\t\tФайл: %s\n\t\tРазмер: %d байт\n\t\tMIME: %s\n\n",
 			p.FilePath, p.Size, p.MimeType)
 	}
 }

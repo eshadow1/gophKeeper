@@ -122,7 +122,6 @@ func (s *Server) CreateItem(stream pb.GophKeeperService_CreateItemServer) error 
 			return status.Errorf(codes.Internal, "failed to receive chunk")
 		}
 
-		// Метаданные читаем только из первого чанка
 		if chunkCount == 0 {
 			if chunk.DataType == "" {
 				return status.Errorf(codes.InvalidArgument, "data_type is required in the first chunk")
@@ -131,7 +130,6 @@ func (s *Server) CreateItem(stream pb.GophKeeperService_CreateItemServer) error 
 			metaInfo = chunk.MetaInfo
 		}
 
-		// Добавляем данные чанка к общему массиву
 		encryptedData = append(encryptedData, chunk.EncryptedData...)
 
 		if chunk.IsLast {
@@ -150,6 +148,7 @@ func (s *Server) CreateItem(stream pb.GophKeeperService_CreateItemServer) error 
 		EncryptedData: encryptedData,
 		MetaInfo:      metaInfo,
 		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	newItem, errCreate := s.keeper.CreateItem(stream.Context(), item)

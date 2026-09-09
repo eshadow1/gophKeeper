@@ -134,7 +134,7 @@ func (repo *postgreSQLRepository) CreateItem(ctx context.Context, item *model.It
 		INSERT INTO items (user_id, data_type, encrypted_data, meta_info, created_at, updated_at) 
 		VALUES ($1, $2, $3, $4, $5, $6)
 		
-		RETURNING id, user_id, data_type, encrypted_data, meta_info, created_at;
+		RETURNING id, user_id, data_type, encrypted_data, meta_info, created_at, updated_at;
 	`
 
 	err := repo.pool.QueryRow(ctx, query, item.UserID, item.DataType, item.EncryptedData, item.MetaInfo, item.CreatedAt, item.UpdatedAt).
