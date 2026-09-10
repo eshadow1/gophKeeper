@@ -68,7 +68,6 @@ func (s *Server) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.Reg
 	token, errRegister := s.auth.Register(ctx, &model.UserUnsave{Username: req.Username, Password: req.Password})
 	if errRegister != nil {
 		if errors.Is(errRegister, service.ErrUserAlreadyExists) {
-			loggers.Log.Info("User already exists", "username", req.Username)
 			return nil, status.Errorf(codes.AlreadyExists, "user already exists")
 		}
 
@@ -88,7 +87,6 @@ func (s *Server) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResp
 	token, errGet := s.auth.Login(ctx, &model.UserUnsave{Username: req.Username, Password: req.Password})
 	if errGet != nil {
 		if errors.Is(errGet, service.ErrUserNotFound) || errors.Is(errGet, service.ErrCompareHash) {
-			loggers.Log.Info("User not found or password invalid", "username", req.Username)
 			return nil, status.Errorf(codes.Unauthenticated, "invalid username or password")
 		}
 
@@ -114,7 +112,6 @@ func (s *Server) CreateItem(stream pb.GophKeeperService_CreateItemServer) error 
 	for {
 		chunk, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
-			// Клиент закрыл поток, не отправив флаг is_last
 			return status.Errorf(codes.InvalidArgument, "stream closed without is_last flag")
 		}
 		if err != nil {
