@@ -1,0 +1,11 @@
+template: testify
+formatter: goimports
+log-level: "error"
+packages:
+  github.com/eshadow1/gophkeeper/internal:
+    config:
+      all: true
+      recursive: true
+      dir: "mocks/{{.SrcPackageName}}"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+      inpackage: false
